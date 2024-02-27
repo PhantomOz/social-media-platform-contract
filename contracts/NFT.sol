@@ -8,7 +8,7 @@ contract MyNFT is ERC721, Ownable {
     uint256 private s_tokenCounter;
     mapping(uint256 => string) private s_tokenIdToUri;
     
-    constructor(string memory _name, string memory _symbol) ERC721(_name, _symbol) {
+    constructor(string memory _name, string memory _symbol) ERC721(_name, _symbol) Ownable(msg.sender){
         s_tokenCounter = 0;
     }
 

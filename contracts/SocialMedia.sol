@@ -2,6 +2,8 @@
 pragma solidity ^0.8.19;
 
 import {MyNFT} from "./NFT.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
+
 
 //errors
 error UserAlreadyExists();
@@ -14,13 +16,16 @@ error BAD_REQUEST();
 /// @notice This contract enable users create, share and react to post on this platform.
 /// @dev This contract utilizes openzeppelin and gasless transactions
 contract SocialMedia {
-    mapping(address => User) private addressToUser;
-    mapping(uint256 => Message) private idToMessage;
+    using Strings for uint256;
+    using Strings for uint160;
+
+    mapping(address => User) public addressToUser;
+    mapping(uint256 => Message) public idToMessage;
     mapping(uint256 => mapping(uint256 => Comment)) private messageIdToComment;
     mapping(uint256 => mapping(address => bool)) private messageIdToLikes;
     mapping(address => mapping(address => bool)) private addressToFollowers;
     uint256 private messageCounter;
-    NFT private nftCollection;
+    MyNFT private nftCollection;
 
     event NewUser(address indexed _user, string _username, uint256 _time);
     event NewPost(address indexed _user, uint256 indexed _postId, uint256 indexed _tokenId, address _tokenAddress);
@@ -141,7 +146,7 @@ contract SocialMedia {
             revert BAD_REQUEST();
         }
         addressToUser[_creator]._wallet += msg.value;
-        emit tip(msg.sender, _creator, msg.value);
+        emit Tip(msg.sender, _creator, msg.value);
     }
 
     function deleteContent(uint256 _contentId) external {
@@ -172,5 +177,10 @@ contract SocialMedia {
         emit WithdrawTip(msg.sender, balance);
     }
 
-    function shareContent() external {}
+    function shareContent(uint256 _contentId) external view returns(string memory _link){
+        if(idToMessage[_contentId]._createdAt == 0){
+            revert BAD_REQUEST();
+        }
+        _link = string.concat("https://testnets.opensea.io/assets/mumbai/", uint160(address(nftCollection)).toString(), "/", _contentId.toString());
+    }
 }
