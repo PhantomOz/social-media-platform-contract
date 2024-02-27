@@ -1,19 +1,37 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
+import {MyNFT} from "./NFT.sol";
+
+//errors
 error UserAlreadyExists();
 error Unauthorised();
 error URI_TooShort();
 error BAD_REQUEST();
 
+/// @title A decentralized social media platform
+/// @author Favour Aniogor
+/// @notice This contract enable users create, share and react to post on this platform.
+/// @dev This contract utilizes openzeppelin and gasless transactions
 contract SocialMedia {
     mapping(address => User) private addressToUser;
     mapping(uint256 => Message) private idToMessage;
     mapping(uint256 => mapping(uint256 => Comment)) private messageIdToComment;
     mapping(uint256 => mapping(address => bool)) private messageIdToLikes;
     mapping(address => mapping(address => bool)) private addressToFollowers;
-
     uint256 private messageCounter;
+    NFT private nftCollection;
+
+    event NewUser(address indexed _user, string _username, uint256 _time);
+    event NewPost(address indexed _user, uint256 indexed _postId, uint256 indexed _tokenId, address _tokenAddress);
+    event LikePost(address indexed _user, uint256 _postId);
+    event UnlikePost(address indexed _user, uint256 _postId);
+    event FollowUser(address indexed _from, address indexed _to);
+    event UnfollowUser(address indexed _from, address indexed _to);
+    event Tip(address indexed _from, address indexed _to, uint256 _amount);
+    event DeletPost(address indexed _user, uint256 indexed _postId);
+    event CommentOnPost(address indexed _user, uint256 indexed _postId, uint256 _commentId);
+    event WithdrawTip(address indexed _user, uint256 _amount);
     
     struct User {
         string _username;
@@ -41,7 +59,8 @@ contract SocialMedia {
     }
 
     constructor(){
-        
+        nftCollection = new MyNFT("SOCIAL MEDIA COLLECTION", "SMC");
+        messageCounter = 0;
     }
 
 
@@ -50,8 +69,9 @@ contract SocialMedia {
             revert UserAlreadyExists();
         }
         addressToUser[msg.sender] = User(_username, 0, 0, 0, true, 0, block.timestamp);
-        //emit an event
+        emit NewUser(msg.sender, _username, block.timestamp);
     }
+
     function postContent(string memory _description, string calldata _tokenUri) external {
         if(!addressToUser[msg.sender]._isExists){
             revert Unauthorised();
@@ -59,11 +79,12 @@ contract SocialMedia {
         if(bytes(_tokenUri).length < 8){
             revert URI_TooShort();
         }
-        //mint nft
+        nftCollection.mintNft(_tokenUri, msg.sender);
         idToMessage[messageCounter] = Message(messageCounter, _description,msg.sender, 0, 0, block.timestamp);
-        //emit event of post
+        emit NewPost(msg.sender, messageCounter, messageCounter, address(nftCollection));
         messageCounter++;
     }
+
     function toggleLikeContent(uint256 _messageId) external {
         if(!addressToUser[msg.sender]._isExists){
             revert Unauthorised();
@@ -72,12 +93,16 @@ contract SocialMedia {
             revert BAD_REQUEST();
         }
         if(!messageIdToLikes[_messageId][msg.sender]){
+            messageIdToLikes[_messageId][msg.sender] = true;
             idToMessage[_messageId]._likes += 1;
+            emit LikePost(msg.sender, _messageId);
         }else{
+            messageIdToLikes[_messageId][msg.sender] = false;
             idToMessage[_messageId]._likes -= 1;
+            emit UnlikePost(msg.sender, _messageId);
         }
-        //emit like event
     }
+
     function commentOnContent(uint256 _messageId, string calldata _comment) external {
         if(!addressToUser[msg.sender]._isExists){
             revert Unauthorised();
@@ -88,8 +113,9 @@ contract SocialMedia {
         uint256 _count = idToMessage[_messageId]._commentCounts;
         messageIdToComment[_messageId][_count] = Comment(_comment, _messageId, msg.sender, block.timestamp);
         idToMessage[_messageId]._commentCounts += 1;
-        //emit event here
+        emit CommentOnPost(msg.sender, _messageId, _count);
     }
+
     function toggleFollowUser(address _user) external {
         if(!addressToUser[msg.sender]._isExists){
             revert Unauthorised();
@@ -101,21 +127,23 @@ contract SocialMedia {
             addressToFollowers[_user][msg.sender] = false;
             addressToUser[_user]._followers -= 1;
             addressToUser[msg.sender]._following -= 1;
-            //emit unfollow event
+            emit UnfollowUser(msg.sender, _user);
         }else{
             addressToFollowers[_user][msg.sender] = true;
             addressToUser[_user]._followers += 1;
             addressToUser[msg.sender]._following += 1;
-            //emit follow event
+            emit FollowUser(msg.sender, _user);
         }
     }
+
     function tipCreator(address _creator) external payable  {
         if(!addressToUser[_creator]._isExists){
             revert BAD_REQUEST();
         }
         addressToUser[_creator]._wallet += msg.value;
-        //emit tip given 
+        emit tip(msg.sender, _creator, msg.value);
     }
+
     function deleteContent(uint256 _contentId) external {
         if(!addressToUser[msg.sender]._isExists){
             revert Unauthorised();
@@ -127,8 +155,9 @@ contract SocialMedia {
             revert BAD_REQUEST();
         }
         delete(idToMessage[_contentId]);
-        //see if the token
+        emit DeletPost(msg.sender, _contentId);
     }
+
     function withdrawTip() external {
         if(!addressToUser[msg.sender]._isExists){
             revert Unauthorised();
@@ -140,7 +169,8 @@ contract SocialMedia {
         addressToUser[msg.sender]._wallet = 0;
         (bool s,) = payable (msg.sender).call{value: balance}("");
         require(s);
-        //emit withdrawal event
+        emit WithdrawTip(msg.sender, balance);
     }
+
     function shareContent() external {}
 }
