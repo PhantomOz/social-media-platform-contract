@@ -7,12 +7,17 @@ pragma solidity ^0.8.19;
 /// @notice This contract enable users create, share and react to post on this platform.
 /// @dev This contract utilizes openzeppelin and gasless transactions
 contract SocialMedia {
+    mapping(address => User) private addressToUser;
+    mapping(uint256 => Message) private idToMessage;
+    mapping(uint256 => mapping(uint256 => Comment)) private messageIdToComment;
+
     struct User {
         string username;
         uint256 followers;
         uint256 following;
         uint256 wallet;
         bool isExists;
+        uint256 _postCount;
     }
 
     struct Message {
