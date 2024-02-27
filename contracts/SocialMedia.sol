@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
+//errors
+error UserAlreadyExists();
 
 /// @title A decentralized social media platform
 /// @author Favour Aniogor
@@ -12,11 +14,11 @@ contract SocialMedia {
     mapping(uint256 => mapping(uint256 => Comment)) private messageIdToComment;
 
     struct User {
-        string username;
-        uint256 followers;
-        uint256 following;
-        uint256 wallet;
-        bool isExists;
+        string _username;
+        uint256 _followers;
+        uint256 _following;
+        uint256 _wallet;
+        bool _isExists;
         uint256 _postCount;
     }
 
@@ -27,7 +29,13 @@ contract SocialMedia {
         string message;
     }
 
-    function registerUser() external {}
+    function registerUser(string memory _username) external {
+        if(addressToUser[msg.sender]._isExists){
+            revert UserAlreadyExists();
+        }
+        addressToUser[msg.sender] = User(_username, 0, 0, 0, true, 0);
+        //emit an event
+    }
     function postContent() external {}
     function likeContent() external {}
     function commentOnContent() external {}
