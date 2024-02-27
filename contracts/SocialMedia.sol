@@ -17,7 +17,6 @@ error BAD_REQUEST();
 /// @dev This contract utilizes openzeppelin and gasless transactions
 contract SocialMedia {
     using Strings for uint256;
-    using Strings for uint160;
 
     mapping(address => User) public addressToUser;
     mapping(uint256 => Message) public idToMessage;
@@ -181,6 +180,6 @@ contract SocialMedia {
         if(idToMessage[_contentId]._createdAt == 0){
             revert BAD_REQUEST();
         }
-        _link = string.concat("https://testnets.opensea.io/assets/mumbai/", uint160(address(nftCollection)).toString(), "/", _contentId.toString());
+        _link = string.concat("https://testnets.opensea.io/assets/mumbai/", Strings.toHexString(uint256(uint160(address(nftCollection))), 20), "/", _contentId.toString());
     }
 }
